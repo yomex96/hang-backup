@@ -1,0 +1,215 @@
+# version: '3.8'
+
+# services:
+#   frontend:
+#     build:
+#       context: ./frontend
+#       dockerfile: Dockerfile
+#     image: my-frontend:latest
+#     labels:
+#       - "traefik.enable=true"
+#       - "traefik.http.routers.frontend.rule=Host(`localhost`)"
+#       - "traefik.http.routers.frontend.entrypoints=web"
+#       - "traefik.http.services.frontend.loadbalancer.server.port=80"
+#     depends_on:
+#       - backend
+#     ports:
+#       - "3000:80"
+
+#   backend:
+#     build:
+#       context: ./backend
+#       dockerfile: Dockerfile
+#     image: my-backend:latest
+#     labels:
+#       - "traefik.enable=true"
+#       - "traefik.http.routers.backend.rule=Host(`localhost`) && PathPrefix(`/api`)"
+#       - "traefik.http.routers.backend.entrypoints=web"
+#       - "traefik.http.services.backend.loadbalancer.server.port=8000"
+#       - "traefik.http.routers.docs.rule=Host(`localhost`) && PathPrefix(`/docs`)"
+#       - "traefik.http.routers.docs.entrypoints=web"
+#       - "traefik.http.services.docs.loadbalancer.server.port=8000"
+#     depends_on:
+#       - db
+#     ports:
+#       - "8000:8000"
+
+#   db:
+#     image: postgres:13
+#     environment:
+#       POSTGRES_DB: app
+#       POSTGRES_USER: app
+#       POSTGRES_PASSWORD: changethis123
+#     volumes:
+#       - postgres-data:/var/lib/postgresql/data
+#     ports:
+#       - "5432:5432"
+
+#   adminer:
+#     image: adminer
+#     labels:
+#       - "traefik.enable=true"
+#       - "traefik.http.routers.adminer.rule=Host(`localhost`) && PathPrefix(`/adminer`)"
+#       - "traefik.http.routers.adminer.entrypoints=web"
+#       - "traefik.http.services.adminer.loadbalancer.server.port=8080"
+#     ports:
+#       - "8080:8080"
+
+#   proxy:
+#     image: jc21/nginx-proxy-manager:latest
+#     labels:
+#       - "traefik.enable=true"
+#       - "traefik.http.routers.proxy.rule=Host(`localhost`) && PathPrefix(`/proxy`)"
+#       - "traefik.http.routers.proxy.entrypoints=web"
+#       - "traefik.http.services.proxy.loadbalancer.server.port=8090"
+#     ports:
+#       - "8090:8090"
+
+#   traefik:
+#     image: traefik:v2.5
+#     command:
+#       - "--api.insecure=true"
+#       - "--providers.docker=true"
+#       - "--entrypoints.web.address=:80"
+#       - "--entrypoints.websecure.address=:443"
+#     ports:
+#       - "80:80"
+#       - "443:443"
+#       - "8091:8090" 
+#     volumes:
+#       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+# volumes:
+#   postgres-data:
+
+
+
+# version: '3.8'
+
+# services:
+#   frontend:
+#     build: ./frontend
+#     labels:
+#       - "traefik.enable=true"
+#       - "traefik.http.routers.frontend.rule=Host(`localhost`)"
+#       - "traefik.http.services.frontend.loadbalancer.server.port=80"
+#     networks:
+#       - web
+
+#   backend:
+#     build: ./backend
+#     labels:
+#       - "traefik.enable=true"
+#       - "traefik.http.routers.backend.rule=Host(`localhost`) && PathPrefix(`/api`)"
+#       - "traefik.http.services.backend.loadbalancer.server.port=8000"
+#     networks:
+#       - web
+
+#   postgres:
+#     image: postgres:14
+#     environment:
+#       POSTGRES_DB: app
+#       POSTGRES_USER: app
+#       POSTGRES_PASSWORD: changethis123
+#     volumes:
+#       - pgdata:/var/lib/postgresql/data
+#     networks:
+#       - web
+
+#   adminer:
+#     image: adminer
+#     restart: always
+#     ports:
+#       - 8080:8080
+#     networks:
+#       - web
+
+#   nginx-proxy-manager:
+#     image: jc21/nginx-proxy-manager:latest
+#     restart: always
+#     ports:
+#       - 80:80
+#       - 81:81
+#       - 443:443
+#     environment:
+#       DB_SQLITE_FILE: "/data/database.sqlite"
+#     volumes:
+#       - ./data:/data
+#       - ./letsencrypt:/etc/letsencrypt
+#     networks:
+#       - web
+
+# volumes:
+#   pgdata:
+
+# networks:
+#   web:
+
+version: '3.8'
+
+services:
+  frontend:
+    build: ./frontend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`localhost`)"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    networks:
+      - web
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://app:changethis123@postgres/app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`localhost`) && PathPrefix(`/api`)"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+    networks:
+      - web
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:14
+    hostname: postgres-server # This sets the server name
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: changethis123
+      ATABASE_URL: postgres://app:changethis123@postgres-db:5432/app
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - web
+    ports:
+    - "5432:5432"
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    networks:
+      - web
+
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    restart: always
+    ports:
+      - 80:80
+      - 81:81
+      - 443:443
+    environment:
+      DB_SQLITE_FILE: "/data/database.sqlite"
+    volumes:
+      - ./data:/data
+      - ./letsencrypt:/etc/letsencrypt
+    networks:
+      - web
+
+volumes:
+  pgdata:
+
+networks:
+  web:
